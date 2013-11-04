@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
@@ -20,6 +21,7 @@ public class CommonsVfsModuleProvider extends ModuleProvider {
 	protected FileSystemManager fsManager;
 	protected List<String> rootPaths;
 	protected List<String> startPaths;
+	protected Map<DynJS,Require> require;
 
 	protected boolean SANE = true;
 
@@ -68,6 +70,11 @@ public class CommonsVfsModuleProvider extends ModuleProvider {
 		try {
 			FileObject file = fetchFile(moduleID);
 			String fileContent = readFile(file);
+
+			if(moduleID.endsWith(".json")) {
+				fileContent = "module.exports="+fileContent;
+			}
+
 			runtime.evaluate("require.addLoadPath('" + file.getParent() + "')");
 			runtime.newRunner().withFileName(file.getURL().toString()).withContext(context).withSource(fileContent).execute();
 			runtime.evaluate("require.removeLoadPath('" + file.getParent() + "')");
@@ -86,6 +93,9 @@ public class CommonsVfsModuleProvider extends ModuleProvider {
 	 * @return the File if found, else null
 	 */
 	protected FileObject findFile(List<String> loadPaths, String moduleName) {
+		if(moduleName.startsWith("./")) {
+			moduleName = moduleName.substring(2);
+		}
 		String fileName = normalizeName(moduleName);
 		FileObject file = null;
 		for (String loadPath : loadPaths) {
